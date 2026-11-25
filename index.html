@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRACE - Delete your account</title>
+<style>
+  body{margin:0;background:#f2f2f2;color:#0A0A0A;font:16px/1.6 -apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  main{max-width:640px;margin:0 auto;padding:32px 20px 60px}
+  h1{font-size:28px;margin:0 0 4px} h2{font-size:19px;margin:26px 0 8px}
+  .sub{color:#555;margin:0 0 20px}
+  .card{background:#fff;border-radius:14px;padding:18px 20px;margin:14px 0}
+  label{display:block;font-weight:700;margin:14px 0 6px;font-size:14px}
+  input,textarea{width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:10px;padding:12px;font:inherit;background:#fff;color:#0A0A0A}
+  button{margin-top:18px;width:100%;background:#0A0A0A;color:#f2f2f2;border:0;border-radius:12px;padding:14px;font-weight:700;font-size:16px;font-family:inherit;cursor:pointer}
+  button.ghost{background:transparent;color:#0A0A0A;border:1px solid #0A0A0A}
+  button:disabled{opacity:.5}
+  .msg{margin-top:14px;font-weight:600}
+  .hide{display:none} li{margin:5px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Delete your TRACE account</h1>
+  <p class="sub">TRACE by Virex Group</p>
+
+  <div class="card">
+    <b>You can delete your account inside the app:</b> Settings, then Delete account.<br>
+    If you no longer have the app, use the form below.
+  </div>
+
+  <div class="card" id="step1">
+    <h2 style="margin-top:0">Request account deletion</h2>
+    <p>Enter your account details. We will email a confirmation link to the email address of your account. Your request is only sent after you confirm it from that email.</p>
+    <label for="nm">Account name</label><input id="nm" autocomplete="name" placeholder="Your name in TRACE">
+    <label for="tid">TRACE ID</label><input id="tid" placeholder="TRACE-000000">
+    <label for="em">Email used for your account</label><input id="em" type="email" autocomplete="email" placeholder="you@example.com">
+    <label for="rs">Reason (optional)</label><textarea id="rs" rows="2"></textarea>
+    <button id="send">Send confirmation email</button>
+    <div class="msg" id="m1"></div>
+  </div>
+
+  <div class="card hide" id="step2">
+    <h2 style="margin-top:0">Confirm deletion</h2>
+    <p>Your email <b id="cem"></b> is verified. Do you want us to permanently delete your TRACE account and all of its data?</p>
+    <button id="yes">Yes, delete my account</button>
+    <button id="no" class="ghost">No, cancel</button>
+    <div class="msg" id="m2"></div>
+  </div>
+
+  <div class="card hide" id="done"><b>Request received.</b><br>Your deletion request was sent to our team. Your account and data will be deleted within 30 days. You can close this page.</div>
+
+  <h2>Need help?</h2>
+  <p>Contact us: <a href="mailto:mohanihad92@gmail.com">mohanihad92@gmail.com</a></p>
+
+  <h2>What gets deleted</h2>
+  <ul>
+    <li>Your profile (name, photo, banner, bio) and TRACE ID</li>
+    <li>Your posts, drawings, photos and videos</li>
+    <li>Your messages, group messages, room drawings and chat settings</li>
+    <li>Your followers, following, likes, saves and notifications</li>
+  </ul>
+  <h2>What may be kept</h2>
+  <p>Limited information may be kept only when needed for security, fraud prevention, abuse reports, or legal obligations. It is deleted when no longer needed.</p>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+const cfg = {
+        apiKey: "AIzaSyD8nOTOlDbZ9l5XUDgLJ-jxbQpfily1bLk",
+        authDomain: "dico-7208f.firebaseapp.com",
+        projectId: "dico-7208f",
+        storageBucket: "dico-7208f.firebasestorage.app",
+        messagingSenderId: "410329177269",
+        appId: "1:410329177269:web:1c5ace6fdbf6926ad532fc"
+    };
+const app = initializeApp(cfg), auth = getAuth(app), db = getFirestore(app);
+const $ = (id) => document.getElementById(id);
+const KEY = "trace_del_req";
+const save = (o) => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} };
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } };
+const clear = () => { try { localStorage.removeItem(KEY); } catch (e) {} };
+const pageUrl = location.origin + location.pathname;
+
+$("send").onclick = async () => {
+  const nm = $("nm").value.trim(), tid = $("tid").value.trim(), em = $("em").value.trim().toLowerCase(), rs = $("rs").value.trim();
+  if (!nm || !tid || !/^\S+@\S+\.\S+$/.test(em)) { $("m1").textContent = "Please enter your name, TRACE ID and a valid email."; return; }
+  $("send").disabled = true; $("m1").textContent = "Sending...";
+  try {
+    await sendSignInLinkToEmail(auth, em, { url: pageUrl, handleCodeInApp: true });
+    save({ nm, tid, em, rs });
+    $("m1").textContent = "Done. Check your email (and spam) and open the confirmation link.";
+  } catch (e) {
+    $("m1").textContent = "Could not send the email. (" + (e && e.code ? e.code : e) + ") Please try again later.";
+    $("send").disabled = false;
+  }
+};
+
+(async () => {
+  if (!isSignInWithEmailLink(auth, location.href)) return;
+  $("step1").classList.add("hide");
+  let d = load();
+  const em = d ? d.em : (prompt("Please enter the email you used for the request") || "").trim().toLowerCase();
+  if (!d) d = { nm: "", tid: "", em, rs: "" };
+  try {
+    await signInWithEmailLink(auth, em, location.href);
+  } catch (e) {
+    $("step2").classList.remove("hide"); $("yes").classList.add("hide"); $("no").classList.add("hide");
+    $("cem").textContent = em; $("m2").textContent = "This link is invalid or expired. Please send a new request."; return;
+  }
+  $("cem").textContent = em; $("step2").classList.remove("hide");
+  $("yes").onclick = async () => {
+    $("yes").disabled = true; $("m2").textContent = "Sending...";
+    try {
+      await addDoc(collection(db, "reports"), {
+        kind: "deletion-request", status: "pending",
+        accountName: d.nm, accountId: d.tid, email: em, emailVerified: true,
+        note: d.rs || "", timestamp: serverTimestamp()
+      });
+      clear(); try { await signOut(auth); } catch (e) {}
+      $("step2").classList.add("hide"); $("done").classList.remove("hide");
+    } catch (e) { $("m2").textContent = "Could not send the request. Please try again."; $("yes").disabled = false; }
+  };
+  $("no").onclick = async () => { clear(); try { await signOut(auth); } catch (e) {} location.href = pageUrl; };
+})();
+</script>
+</body>
+</html>
